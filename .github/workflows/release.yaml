@@ -24,6 +24,12 @@ jobs:
         run: pip install twine build nox[uv]
       - name: update citation date
         run: nox -s release-date
+      - name: Update version from release tag
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Updating version to $VERSION"
+          pip install commitizen
+          cz bump --yes --increment PATCH --version $VERSION
       - name: Build and publish
         env:
           TWINE_USERNAME: __token__
