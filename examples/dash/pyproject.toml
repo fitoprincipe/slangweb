@@ -9,6 +9,7 @@ description = "slangweb app"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "slangweb",
     "dash"
 ]
 
