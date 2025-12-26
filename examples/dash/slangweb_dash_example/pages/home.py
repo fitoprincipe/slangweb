@@ -1,7 +1,8 @@
 """Homepage."""
 
 from dash import html, register_page
-from slangweb_test import SW
+
+from slangweb_dash_example import SW
 
 
 def layout(lang: str = "en"):

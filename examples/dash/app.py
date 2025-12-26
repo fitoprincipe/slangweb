@@ -2,7 +2,7 @@
 
 import logging
 
-from slangweb_test.main import app
+from slangweb_dash_example.main import app
 
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger("urllib3").setLevel(logging.WARNING)

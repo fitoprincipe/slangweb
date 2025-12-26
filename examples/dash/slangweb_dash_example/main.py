@@ -4,7 +4,8 @@ from pathlib import Path
 
 import dash
 from dash import html, page_container
-from slangweb_test.components.navbar import navbar_layout
+
+from slangweb_dash_example.components.navbar import navbar_layout
 
 # Translator instances are created inside page layouts to avoid shared state
 

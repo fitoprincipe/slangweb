@@ -1,7 +1,8 @@
 """A Dash page example demonstrating dynamic translation using SlangWeb."""
 
 from dash import Input, Output, State, callback, dcc, html, register_page
-from slangweb_test import SW, t
+
+from slangweb_dash_example import SW, t
 
 
 def layout(lang: str = "en"):
