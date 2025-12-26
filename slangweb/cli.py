@@ -3,7 +3,9 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import click
@@ -312,6 +314,44 @@ def create_flask_example():
         Path(__file__).parent / "examples" / "flask_example.py", example_folder / "flask_example.py"
     )
     click.echo(f"Flask example created at '{example_folder / 'flask_example.py'}'")
+
+
+@cli.command()
+@click.argument("example_name")
+def install_example(example_name):
+    """Install an example from the repository.
+
+    This command downloads the specified example from the slangweb GitHub repository
+    and installs it in the current working directory.
+
+    EXAMPLE_NAME: The name of the example to install (e.g., 'dash').
+    """
+    repo_url = "https://github.com/fitoprincipe/slangweb.git"
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Clone the repo shallowly
+            subprocess.run(
+                ["git", "clone", "--depth", "1", repo_url, temp_dir],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            example_path = Path(temp_dir) / "examples" / example_name
+            if not example_path.exists():
+                click.echo(f"Example '{example_name}' not found in the repository.", err=True)
+                return
+            dest = Path.cwd() / f"slangweb_{example_name}_example"
+            if dest.exists():
+                click.echo(
+                    f"Destination folder '{dest}' already exists. Please remove it first.", err=True
+                )
+                return
+            shutil.copytree(example_path, dest)
+            click.echo(f"Example '{example_name}' installed at '{dest}'")
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to clone repository: {e.stderr}", err=True)
+    except Exception as e:
+        click.echo(f"An error occurred: {e}", err=True)
 
 
 def main():
