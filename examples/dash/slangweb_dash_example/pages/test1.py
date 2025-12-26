@@ -80,7 +80,7 @@ def layout(lang: str = "en"):
 @callback(
     Output("test1-output", "children"),
     Input("translate-button", "n_clicks"),
-    Input("test1-input", "value"),
+    State("test1-input", "value"),
     State("test1-location", "pathname"),
 )
 def update_test1_output(n_clicks, value, pathname):
