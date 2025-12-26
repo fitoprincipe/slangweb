@@ -243,12 +243,7 @@ def _sync(file: Path, language: str, config: dict) -> None:
         click.echo(f"Only Python files are supported. '{file}' is not a Python file.", err=True)
         return None
     click.echo(f"Syncing translations in: {file}")
-    SW = Translator(
-        base_folder=config.get("base_folder", SLANG_FOLDER),
-        models_folder=config.get("models_folder", MODELS_FOLDER),
-        lookup_folder=config.get("lookups_folder", LOOKUPS_FOLDER),
-        models_lookup_file=config.get("models_lookup_file", MODELS_LOOKUP_FILE),
-    )
+    SW = Translator(base_folder=config.get("base_folder", SLANG_FOLDER))
     to_translate = find_translator_usages(file, config.get("translator_class", "SW"))
     click.echo(f"Translations for language '{language}':")
     SW.set_language(language)
