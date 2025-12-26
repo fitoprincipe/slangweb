@@ -132,9 +132,10 @@ dmypy.json
 
 # system IDE
 .vscode/
+.idea/
 
 # image tmp file
 *Zone.Identifier
 
-# debugging notebooks
-test.ipynb
+# slangweb folder from examples
+examples/*/slangweb/
