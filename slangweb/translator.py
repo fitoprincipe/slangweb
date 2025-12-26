@@ -77,15 +77,6 @@ class Translator:
         """Get the default language."""
         return self.config.get("default_language", DEFAULT_LANGUAGE)
 
-    def set_language(self, language: str | None) -> None:
-        """Set the current language for translation."""
-        language = language.lower() if language else None
-        if self.language != language:
-            self.language = language
-            # reset model and tokenizer
-            self._model = None
-            self._tokenizer = None
-
     @property
     def models_lookup(self) -> dict:
         """Load the models configuration from the models file."""
@@ -98,14 +89,6 @@ class Translator:
             self._models_lookup = models
         return self._models_lookup | {}
 
-    @property
-    def model_name(self) -> str | None:
-        """Get the model name for the current language."""
-        model_name = self.models_lookup.get(self.language, {}).get("model")
-        if not model_name:
-            logger.warning(f"Language '{self.language}' not found in models lookup.")
-        return model_name
-
     def supported_languages(self) -> list[str]:
         """Get the list of supported languages.
 
@@ -114,7 +97,30 @@ class Translator:
         supported = self.config.get("supported_languages", [])
         # Filter supported languages to those present in models lookup
         supported = [lang for lang in supported if lang in self.models_lookup]
+        supported.append(self.default_language)
         return supported
+
+    def set_language(self, language: str | None) -> None:
+        """Set the current language for translation."""
+        language = language.lower() if language else None
+
+        if language not in self.supported_languages():
+            logger.warning(f"Language '{language}' is not supported.")
+            return None
+
+        if self.language != language:
+            self.language = language
+            # reset model and tokenizer
+            self._model = None
+            self._tokenizer = None
+
+    @property
+    def model_name(self) -> str | None:
+        """Get the model name for the current language."""
+        model_name = self.models_lookup.get(self.language, {}).get("model")
+        if not model_name:
+            logger.warning(f"Language '{self.language}' not found in models lookup.")
+        return model_name
 
     def is_language_in_lookup(self) -> bool:
         """Check if the current language is in the lookup file."""
@@ -153,8 +159,12 @@ class Translator:
     @property
     def translation_lookup(self) -> dict:
         """Get the translation lookup for the current language."""
-        with open(self.translation_lookup_file, "r", encoding=ENCODING) as f:
-            lookup = json.load(f)
+        try:
+            with open(self.translation_lookup_file, "r", encoding=ENCODING) as f:
+                lookup = json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading translation lookup file: {e}")
+            lookup = {}
         return lookup
 
     def get_tokenizer(self) -> MarianTokenizer | None:
@@ -263,8 +273,6 @@ class Translator:
         Args:
             text (str): The text to translate.
         """
-        if not self.can_be_translated():
-            return text
         return self.translation_lookup.get(text)
 
     def save_translation(self, text: str, translated_text: str) -> None:
@@ -292,5 +300,4 @@ class Translator:
 
     def __call__(self, text: str) -> str:
         """Translate the given text using the translator instance."""
-        logger.debug(f"Translating text: {text}")
         return self.get_translation(text)
