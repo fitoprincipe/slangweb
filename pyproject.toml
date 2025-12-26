@@ -79,7 +79,7 @@ post-install-commands = ["pre-commit install"]
 [tool.commitizen]
 tag_format = "v$major.$minor.$patch$prerelease"
 update_changelog_on_bump = false
-version = "0.0.3"
+version = "0.0.4"
 version_files = [
     "pyproject.toml:version",
     "slangweb/__init__.py:__version__",
