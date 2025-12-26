@@ -12,7 +12,7 @@ from datetime import datetime
 project = "Slang Web"
 author = "Rodrigo Esteban Principe"
 copyright = f"2025-{datetime.now().year}, {author}"
-release = "0.0.0"
+release = "0.0.5"
 
 # -- General configuration -----------------------------------------------------
 extensions = [
