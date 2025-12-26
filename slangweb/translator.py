@@ -58,19 +58,28 @@ class Translator:
         self._tokenizer = None
 
     @property
-    def models_folder(self) -> Path:
+    def models_folder(self) -> Path | None:
         """Get the models folder path."""
-        return self.config.get("models_folder")
+        folder = self.config.get("models_folder")
+        if folder is None:
+            logger.error("Models folder path is not set in the configuration.")
+        return folder
 
     @property
-    def lookup_folder(self) -> Path:
+    def lookup_folder(self) -> Path | None:
         """Get the lookup folder path."""
-        return self.config.get("lookups_folder")
+        folder = self.config.get("lookups_folder")
+        if folder is None:
+            logger.error("Lookups folder path is not set in the configuration.")
+        return folder
 
     @property
-    def models_lookup_file(self) -> Path:
+    def models_lookup_file(self) -> Path | None:
         """Get the models lookup file path."""
-        return self.config.get("models_lookup_file")
+        file = self.config.get("models_lookup_file")
+        if file is None:
+            logger.error("Models lookup file path is not set in the configuration.")
+        return file
 
     @property
     def default_language(self) -> str:
@@ -80,14 +89,23 @@ class Translator:
     @property
     def models_lookup(self) -> dict:
         """Load the models configuration from the models file."""
+        if self.models_lookup_file is None:
+            return {}
+
         if not self.models_lookup_file.exists():
             logger.error(f"Models lookup file not found: {self.models_lookup_file}")
             return {}
+
         if self._models_lookup is None:
-            with open(self.models_lookup_file, "r", encoding="utf-8") as f:
-                models = json.load(f)
+            try:
+                with open(self.models_lookup_file, "r", encoding="utf-8") as f:
+                    models = json.load(f)
+            except Exception as e:
+                logger.error(f"Error loading models lookup file: {e}")
+                models = {}
             self._models_lookup = models
-        return self._models_lookup | {}
+
+        return self._models_lookup
 
     def supported_languages(self) -> list[str]:
         """Get the list of supported languages.
@@ -115,6 +133,14 @@ class Translator:
             self._tokenizer = None
 
     @property
+    def language_name(self) -> str | None:
+        """Get the language name for the current language."""
+        name = self.models_lookup.get(self.language, {}).get("name")
+        if not name:
+            logger.warning(f"Language '{self.language}' not found in models lookup.")
+        return name
+
+    @property
     def model_name(self) -> str | None:
         """Get the model name for the current language."""
         model_name = self.models_lookup.get(self.language, {}).get("model")
@@ -134,7 +160,7 @@ class Translator:
     @property
     def model_filename(self) -> Path | None:
         """Get the model directory for the current language."""
-        if self.model_name is None:
+        if self.model_name is None or self.models_folder is None:
             return None
         model_fn = self.models_folder / f"models--{self.model_name.replace('/', '--')}"
         return model_fn
@@ -146,19 +172,28 @@ class Translator:
         return self.model_filename.is_dir()
 
     @property
-    def translation_lookup_file(self) -> Path:
+    def translation_lookup_file(self) -> Path | None:
         """Get the translation lookup file for the current language."""
+        if self.lookup_folder is None:
+            logger.error("Lookup folder is not set in the configuration.")
+            return None
         fn = self.lookup_folder / f"{self.language}.json"
         if not fn.exists():
             logger.info(f"Creating new lookup file: {fn}")
-            fn.parent.mkdir(parents=True, exist_ok=True)
-            with open(fn, "w", encoding=ENCODING) as f:
-                json.dump({}, f, indent=4, ensure_ascii=False)
+            try:
+                fn.parent.mkdir(parents=True, exist_ok=True)
+                with open(fn, "w", encoding=ENCODING) as f:
+                    json.dump({}, f, indent=4, ensure_ascii=False)
+            except Exception as e:
+                logger.error(f"Error creating translation lookup file: {e}")
+                return None
         return fn
 
     @property
     def translation_lookup(self) -> dict:
         """Get the translation lookup for the current language."""
+        if self.translation_lookup_file is None:
+            return {}
         try:
             with open(self.translation_lookup_file, "r", encoding=ENCODING) as f:
                 lookup = json.load(f)
@@ -215,6 +250,10 @@ class Translator:
         # exit: default language
         if self.language == DEFAULT_LANGUAGE:
             logger.info(f"Default language set ({self.language}), no translation needed.")
+            return False
+
+        # exit: language not in lookup
+        if self.models_lookup_file is None:
             return False
 
         # exit: model lookup file missing
@@ -277,6 +316,9 @@ class Translator:
 
     def save_translation(self, text: str, translated_text: str) -> None:
         """Save the translated text to the lookup file."""
+        if self.translation_lookup_file is None:
+            logger.error("Translation lookup file is not available.")
+            return None
         with open(self.translation_lookup_file, "r", encoding=ENCODING) as f:
             lookup = json.load(f)
         lookup[text] = translated_text
