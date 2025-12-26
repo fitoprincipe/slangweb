@@ -3,14 +3,16 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import click
 from transformers import MarianMTModel, MarianTokenizer
 
 from .constants import ENCODING, LOOKUPS_FOLDER, MODELS_FOLDER, MODELS_LOOKUP_FILE, SLANG_FOLDER
-from .tools import available_languages, find_translator_usages
+from .tools import available_languages, find_translator_usages, read_config
 from .translator import Translator
 
 
@@ -20,25 +22,22 @@ def cli():
     pass
 
 
-def _create_config_file(folder: str = SLANG_FOLDER, overwrite: bool = False):
+def _create_config_file(folder: Path, overwrite: bool = False):
     """Create the config file in the specified folder.
 
     Args:
-        folder (str): Folder where to create the config file.
+        folder (Path): Folder where to create the config file.
         overwrite (bool): Whether to overwrite existing config file.
     """
-    here = Path(os.getcwd())
-    folder_path = here / folder
-    folder_path.mkdir(parents=True, exist_ok=True)
+    folder.mkdir(parents=True, exist_ok=True)
     source_folders = ["."]
     # exclude hidden folders, __pycache__, docs, tests, etc.
-    exclude_folders = {folder, "__pycache__", "docs", "tests"}
-    for item in os.listdir(here):
-        item_path = here / item
+    exclude_folders = {folder.name, "__pycache__", "docs", "tests", "dist", "venv"}
+    for item in os.listdir(folder):
+        item_path = folder / item
         if item_path.is_dir() and item not in exclude_folders and not item.startswith("."):
             source_folders.append(item)
     config = {
-        "base_folder": folder,
         "models_lookup_file": MODELS_LOOKUP_FILE,
         "models_folder": MODELS_FOLDER,
         "lookups_folder": LOOKUPS_FOLDER,
@@ -48,7 +47,7 @@ def _create_config_file(folder: str = SLANG_FOLDER, overwrite: bool = False):
         "supported_languages": ["es"],
         "translator_class": "SW",
     }
-    config_file = folder_path / "config.json"
+    config_file = folder / "config.json"
     if config_file.exists() and not overwrite:
         click.echo(
             f"Configuration file already exists at '{config_file}'. Use overwrite=True to overwrite."
@@ -63,12 +62,11 @@ def _create_config_file(folder: str = SLANG_FOLDER, overwrite: bool = False):
 @click.argument("folder", default=SLANG_FOLDER, type=str)
 @click.option("--overwrite", is_flag=True, help="Overwrite existing config file if it exists.")
 def create_config(folder, overwrite):
-    """Create the config file in the specified folder.
+    """Create the config file in the specified folder, relative to the current working directory.
 
     The configuration file contains the following structure:
 
     {
-        "base_folder": "slangweb",
         "models_lookup_file": "models_lookup.json",
         "models_folder": "models",
         "lookups_folder": "lookups",
@@ -79,32 +77,9 @@ def create_config(folder, overwrite):
         "translator_class": "SW"
     }
     """
-    _create_config_file(folder, overwrite)
-
-
-def _read_config(folder: str = SLANG_FOLDER) -> dict:
-    """Read the config file from the specified folder."""
+    # this command MUST be run in the project root folder
     here = Path(os.getcwd())
-    config_file = here / folder / "config.json"
-    if not config_file.exists():
-        click.echo(
-            f"Config file '{config_file}' does not exist. Create it first by running 'slangweb create-config'.",
-            err=True,
-        )
-        sys.exit(1)
-    with open(config_file, "r", encoding="utf-8") as f:
-        config = json.load(f)
-    return {
-        "base_folder": here / config.get("base_folder", SLANG_FOLDER),
-        "models_lookup_file": here / folder / config.get("models_lookup_file", MODELS_LOOKUP_FILE),
-        "models_folder": here / folder / config.get("models_folder", MODELS_FOLDER),
-        "lookups_folder": here / folder / config.get("lookups_folder", LOOKUPS_FOLDER),
-        "default_language": config.get("default_language", "en"),
-        "encoding": config.get("encoding", "utf-8"),
-        "source_folders": config.get("source_folders", ["."]),
-        "supported_languages": config.get("supported_languages", ["es"]),
-        "translator_class": config.get("translator_class", "SW"),
-    }
+    _create_config_file(here / folder, overwrite)
 
 
 def _create_models_lookup_file(output_file: Path, overwrite: bool = False):
@@ -182,7 +157,7 @@ def create_models_lookup_file(folder: str = SLANG_FOLDER, overwrite: bool = Fals
 
     The location and name of the file will be taken from the config file if provided.
     """
-    config = _read_config(folder)
+    config = read_config(folder)
     _create_models_lookup_file(config["models_lookup_file"], overwrite)
 
 
@@ -190,11 +165,11 @@ def create_models_lookup_file(folder: str = SLANG_FOLDER, overwrite: bool = Fals
 @click.argument("folder", default=SLANG_FOLDER, type=str)
 def init(folder: str = SLANG_FOLDER):
     """Initialize the slangweb project structure."""
-    _create_config_file(folder, overwrite=False)
-    config = _read_config(folder)
-    _create_models_lookup_file(config["models_lookup_file"], overwrite=False)
     here = Path(os.getcwd())
     folder_path = here / folder
+    _create_config_file(folder_path, overwrite=False)
+    config = read_config(folder)
+    _create_models_lookup_file(config["models_lookup_file"], overwrite=False)
     (folder_path / LOOKUPS_FOLDER).mkdir(parents=True, exist_ok=True)
     (folder_path / MODELS_FOLDER).mkdir(parents=True, exist_ok=True)
     click.echo(f"Initialized slangweb project structure in folder '{folder}'.")
@@ -202,7 +177,7 @@ def init(folder: str = SLANG_FOLDER):
 
 def _available_languages(folder: str = SLANG_FOLDER) -> dict[str, str]:
     """Return a list of available languages with downloaded models."""
-    config = _read_config(folder)
+    config = read_config(folder)
     return available_languages(config["models_lookup_file"], config["models_folder"])
 
 
@@ -248,7 +223,7 @@ def _download_model(language: str, config: dict):
 )
 def download_models(folder):
     """Download a translation model by name (HuggingFace)."""
-    config = _read_config(folder)
+    config = read_config(folder)
     supported_languages = config.get("supported_languages", [])
     with open(config["models_lookup_file"], "r", encoding="utf-8") as f:
         models_lookup = json.load(f)
@@ -270,12 +245,7 @@ def _sync(file: Path, language: str, config: dict) -> None:
         click.echo(f"Only Python files are supported. '{file}' is not a Python file.", err=True)
         return None
     click.echo(f"Syncing translations in: {file}")
-    SW = Translator(
-        base_folder=config.get("base_folder", SLANG_FOLDER),
-        models_folder=config.get("models_folder", MODELS_FOLDER),
-        lookup_folder=config.get("lookups_folder", LOOKUPS_FOLDER),
-        models_lookup_file=config.get("models_lookup_file", MODELS_LOOKUP_FILE),
-    )
+    SW = Translator(base_folder=config.get("base_folder", SLANG_FOLDER))
     to_translate = find_translator_usages(file, config.get("translator_class", "SW"))
     click.echo(f"Translations for language '{language}':")
     SW.set_language(language)
@@ -297,7 +267,7 @@ def _sync(file: Path, language: str, config: dict) -> None:
 def sync(file, folder):
     """Sync translations found in the given Python file."""
     here = Path(os.getcwd())
-    config = _read_config(folder)
+    config = read_config(folder)
     languages = _available_languages(folder).keys()
     supported_languages = config.get("supported_languages", [])
     languages = [lang for lang in languages if lang in supported_languages]
@@ -344,6 +314,44 @@ def create_flask_example():
         Path(__file__).parent / "examples" / "flask_example.py", example_folder / "flask_example.py"
     )
     click.echo(f"Flask example created at '{example_folder / 'flask_example.py'}'")
+
+
+@cli.command()
+@click.argument("example_name")
+def install_example(example_name):
+    """Install an example from the repository.
+
+    This command downloads the specified example from the slangweb GitHub repository
+    and installs it in the current working directory.
+
+    EXAMPLE_NAME: The name of the example to install (e.g., 'dash').
+    """
+    repo_url = "https://github.com/fitoprincipe/slangweb.git"
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Clone the repo shallowly
+            subprocess.run(
+                ["git", "clone", "--depth", "1", repo_url, temp_dir],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            example_path = Path(temp_dir) / "examples" / example_name
+            if not example_path.exists():
+                click.echo(f"Example '{example_name}' not found in the repository.", err=True)
+                return
+            dest = Path.cwd() / f"slangweb_{example_name}_example"
+            if dest.exists():
+                click.echo(
+                    f"Destination folder '{dest}' already exists. Please remove it first.", err=True
+                )
+                return
+            shutil.copytree(example_path, dest)
+            click.echo(f"Example '{example_name}' installed at '{dest}'")
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to clone repository: {e.stderr}", err=True)
+    except Exception as e:
+        click.echo(f"An error occurred: {e}", err=True)
 
 
 def main():

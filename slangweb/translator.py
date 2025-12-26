@@ -13,11 +13,9 @@ from transformers import MarianMTModel, MarianTokenizer
 from .constants import (
     DEFAULT_LANGUAGE,
     ENCODING,
-    LOOKUPS_FOLDER,
-    MODELS_FOLDER,
-    MODELS_LOOKUP_FILE,
     SLANG_FOLDER,
 )
+from .tools import read_config
 
 logger = getLogger(__name__)
 
@@ -34,9 +32,7 @@ class Translator:
     def __init__(
         self,
         base_folder: str = SLANG_FOLDER,
-        models_folder: str = MODELS_FOLDER,
-        lookup_folder: str = LOOKUPS_FOLDER,
-        models_lookup_file: str = MODELS_LOOKUP_FILE,
+        relative_to: Path | None = None,
     ):
         """Initialize the Translator.
 
@@ -49,21 +45,37 @@ class Translator:
         >slangweb generate-models-lookup-file
 
         Args:
-            base_folder (Path): Base directory for slangweb data.
-            models_folder (Path): Directory to store/load translation models.
-            lookup_folder (Path): Directory to store/load translation lookups.
-            models_lookup_file (Path): Path to the models configuration file.
+            base_folder (str): Base directory for slangweb data.
+            relative_to (Path | None): Path to which the base folder is relative. If None, uses current working directory.
         """
-        here = Path(os.getcwd())
+        self.here = Path(relative_to or os.getcwd())
         self.language: str | None = None
-        self.base_folder = here / base_folder
-        self.models_folder = here / base_folder / models_folder
-        self.lookup_folder = here / base_folder / lookup_folder
-        self.models_lookup_file = here / base_folder / models_lookup_file
+        self.base_folder = self.here / base_folder
+        self.config = read_config(base_folder, relative_to=self.here)
         self._models_lookup: dict | None = None
         self._translation_lookup_file: Path | None = None
         self._model = None
         self._tokenizer = None
+
+    @property
+    def models_folder(self) -> Path:
+        """Get the models folder path."""
+        return self.config.get("models_folder")
+
+    @property
+    def lookup_folder(self) -> Path:
+        """Get the lookup folder path."""
+        return self.config.get("lookups_folder")
+
+    @property
+    def models_lookup_file(self) -> Path:
+        """Get the models lookup file path."""
+        return self.config.get("models_lookup_file")
+
+    @property
+    def default_language(self) -> str:
+        """Get the default language."""
+        return self.config.get("default_language", DEFAULT_LANGUAGE)
 
     def set_language(self, language: str | None) -> None:
         """Set the current language for translation."""
@@ -94,6 +106,16 @@ class Translator:
             logger.warning(f"Language '{self.language}' not found in models lookup.")
         return model_name
 
+    def supported_languages(self) -> list[str]:
+        """Get the list of supported languages.
+
+        Gets the supported languages from the config file and checks the models lookup file.
+        """
+        supported = self.config.get("supported_languages", [])
+        # Filter supported languages to those present in models lookup
+        supported = [lang for lang in supported if lang in self.models_lookup]
+        return supported
+
     def is_language_in_lookup(self) -> bool:
         """Check if the current language is in the lookup file."""
         if self.language is None or self.language == DEFAULT_LANGUAGE:
@@ -113,10 +135,9 @@ class Translator:
 
     def is_model_available(self) -> bool:
         """Check if the model for the current language is available."""
-        model_fn = self.model_filename
-        if model_fn is None:
+        if self.model_filename is None:
             return False
-        return model_fn.is_dir()
+        return self.model_filename.is_dir()
 
     @property
     def translation_lookup_file(self) -> Path:
@@ -171,6 +192,11 @@ class Translator:
 
     def can_be_translated(self) -> bool:
         """Check if the current language can be translated."""
+        # config missing
+        if not self.config:
+            logger.error("Configuration not loaded properly.")
+            return False
+
         # exit: no language set
         if self.language is None:
             logger.warning("No language set. Make sure to set it using 'set_language' method.")

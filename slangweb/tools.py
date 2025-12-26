@@ -3,18 +3,61 @@
 import ast
 import json
 import logging
+import os
 from pathlib import Path
+
+from .constants import LOOKUPS_FOLDER, MODELS_FOLDER, MODELS_LOOKUP_FILE, SLANG_FOLDER
 
 logger = logging.getLogger(__name__)
 
 
+def read_config(folder: str = SLANG_FOLDER, relative_to: Path | None = None) -> dict:
+    """Read the config file from the specified folder.
+
+    Args:
+        folder (str): Folder where the config file is located.
+        relative_to (Path | None): Path to which the folder is relative. If None, uses current working directory.
+
+    Returns:
+        dict: Configuration dictionary.
+    """
+    here = Path(relative_to or os.getcwd())
+    config_file = here / folder / "config.json"
+    if not config_file.exists():
+        logger.error(
+            f"Config file '{config_file}' does not exist. Create it first by running 'slangweb create-config'."
+        )
+        return {}
+    with open(config_file, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    return {
+        "models_lookup_file": here / folder / config.get("models_lookup_file", MODELS_LOOKUP_FILE),
+        "models_folder": here / folder / config.get("models_folder", MODELS_FOLDER),
+        "lookups_folder": here / folder / config.get("lookups_folder", LOOKUPS_FOLDER),
+        "default_language": config.get("default_language", "en"),
+        "encoding": config.get("encoding", "utf-8"),
+        "source_folders": config.get("source_folders", ["."]),
+        "supported_languages": config.get("supported_languages", ["es"]),
+        "translator_class": config.get("translator_class", "SW"),
+    }
+
+
 def get_model_folder(model_name: str) -> str:
-    """Get the name of the model folder for the given model name."""
+    """Get the name of the model folder for the given model name.
+
+    Args:
+        model_name (str): Name of the model.
+    """
     return f"models--{model_name.replace('/', '--')}"
 
 
 def available_languages(models_lookup_file: Path, models_folder: Path) -> dict[str, str]:
-    """Return a list of available languages based on existing lookup files and model existence."""
+    """Return a list of available languages based on existing lookup files and model existence.
+
+    Args:
+        models_lookup_file (Path): Path to the models lookup file.
+        models_folder (Path): Path to the models folder.
+    """
     if not models_lookup_file.exists():
         logger.error(
             f"Models lookup file '{models_lookup_file}' does not exist. Create it by running 'slangweb generate-models-lookup-file'."
