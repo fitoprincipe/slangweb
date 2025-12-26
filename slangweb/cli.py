@@ -165,11 +165,11 @@ def create_models_lookup_file(folder: str = SLANG_FOLDER, overwrite: bool = Fals
 @click.argument("folder", default=SLANG_FOLDER, type=str)
 def init(folder: str = SLANG_FOLDER):
     """Initialize the slangweb project structure."""
-    _create_config_file(folder, overwrite=False)
-    config = read_config(folder)
-    _create_models_lookup_file(config["models_lookup_file"], overwrite=False)
     here = Path(os.getcwd())
     folder_path = here / folder
+    _create_config_file(folder_path, overwrite=False)
+    config = read_config(folder)
+    _create_models_lookup_file(config["models_lookup_file"], overwrite=False)
     (folder_path / LOOKUPS_FOLDER).mkdir(parents=True, exist_ok=True)
     (folder_path / MODELS_FOLDER).mkdir(parents=True, exist_ok=True)
     click.echo(f"Initialized slangweb project structure in folder '{folder}'.")
