@@ -22,23 +22,23 @@ The system works with two different approaches:
 At the moment, only ROMANCE languages are included by using the model [Helsinki-NLP/opus-mt-en-ROMANCE](https://huggingface.co/Helsinki-NLP/opus-mt-en-ROMANCE). This model can translate to the following languages:
 
 | Language                     | Code  | Language              | Code  | Language   | Code |
-| ---------------------------- | ----- | --------------------- | ----- | ---------- | ---- | -------- | --- |
+| ---------------------------- | ----- | --------------------- | ----- | ---------- | ---- |
 | Spanish                      | es    | Spanish (Uruguay)     | es_uy | Neapolitan | nap  |
 | Spanish (Argentina)          | es_ar | Spanish (Venezuela)   | es_ve | Sicilian   | scn  |
 | Spanish (Chile)              | es_cl | Portuguese            | pt    | Venetian   | vec  |
 | Spanish (Colombia)           | es_co | Portuguese (Brazil)   | pt_br | Aragonese  | an   |
 | Spanish (Costa Rica)         | es_cr | Portuguese (Portugal) | pt_pt | Arpitan    | frp  |
-| Spanish (Dominican Republic) | es_do | French                | fr    | Corsican   | co   | Friulian | fur |
-| Spanish (Ecuador)            | es_ec | French (Belgium)      | fr_be | Ladin      | lld  |
-| Spanish (El Salvador)        | es_sv | French (Switzerland)  | fr_ch | Ladino     | lad  |
-| Spanish (Guatemala)          | es_gt | French (Canada)       | fr_ca | Latin      | la   |
-| Spanish (Honduras)           | es_hn | French (France)       | fr_fr | Ligurian   | lij  |
-| Spanish (Mexico)             | es_mx | Italian               | it    | Mirandese  | mwl  |
-| Spanish (Nicaragua)          | es_ni | Italian (Italy)       | it_it | Occitan    | oc   |
-| Spanish (Panama)             | es_pa | Catalan               | ca    | Romansh    | rm   |
-| Spanish (Peru)               | es_pe | Galician              | gl    | Sardinian  | sc   |
-| Spanish (Puerto Rico)        | es_pr | Romanian              | ro    | Walloon    | wa   |
-| Spanish (Spain)              | es_es | Lombard               | lmo   |
+| Spanish (Dominican Republic) | es_do | French                | fr    | Corsican   | co   |
+| Spanish (Ecuador)            | es_ec | French (Belgium)      | fr_be | Friulian   | fur  |
+| Spanish (El Salvador)        | es_sv | French (Switzerland)  | fr_ch | Ladin      | lld  |
+| Spanish (Guatemala)          | es_gt | French (Canada)       | fr_ca | Ladino     | lad  |
+| Spanish (Honduras)           | es_hn | French (France)       | fr_fr | Latin      | la   |
+| Spanish (Mexico)             | es_mx | Italian               | it    | Ligurian   | lij  |
+| Spanish (Nicaragua)          | es_ni | Italian (Italy)       | it_it | Mirandese  | mwl  |
+| Spanish (Panama)             | es_pa | Catalan               | ca    | Occitan    | oc   |
+| Spanish (Peru)               | es_pe | Galician              | gl    | Romansh    | rm   |
+| Spanish (Puerto Rico)        | es_pr | Romanian              | ro    | Sardinian  | sc   |
+| Spanish (Spain)              | es_es | Lombard               | lmo   | Walloon    | wa   |
 
 This package creates a folder inside your repo to store a configuration file and other files for the models.
 
@@ -204,6 +204,80 @@ def layout(lang: str = 'en'):
         html.H2(t("Thanks for using SlangWeb!"))
     ])
 ```
+
+## Complete examples
+
+You can use the CLI application to download a complete example
+
+### Dash
+
+1. Choose the folder where the example will live and navigate to it in the Command Line. I will assume that the folder does not exist yet, thus I will create it.
+
+```
+C:/>mkdir slangweb-examples
+C:/>cd slangweb-examples
+C:/slangweb-examples>
+```
+
+2. Create a virtual environment. You can use the virtual environment manager that you prefer. I will use uv. Activate it.
+
+```
+C:/slangweb-examples>uv venv --python 3.11
+C:/slangweb-examples>.venv\Scripts\activate
+(slangweb-examples) C:/slangweb-examples>
+```
+
+3. Install `slangweb`
+
+```
+(slangweb-examples) C:/slangweb-examples>uv pip install slangweb
+```
+
+4. Clone the example using the CLI command
+
+```
+(slangweb-examples) C:/slangweb-examples>slangweb install-example dash
+```
+
+5. Navigate into it and install it as a package.
+
+```
+(slangweb-examples) C:/slangweb-examples>cd slangweb_dash_example
+(slangweb-examples) C:/slangweb-examples/slangweb_dash_example>
+```
+
+6. Initialize `slangweb`
+
+```
+(slangweb-examples) C:/slangweb-examples/slangweb_dash_example>slangweb init
+Configuration file created at 'C:\slangweb-examples\slangweb_dash_example\slangweb\config.json'
+Models lookup file created at 'C:\slangweb-examples\slangweb_dash_example\slangweb\models_lookup.json'
+Initialized slangweb project structure in folder 'slangweb'.
+```
+
+7. (optional) open the `config.json` with a text editor and update the list of `supported_languages`
+
+8. Download the models
+
+```
+(slangweb-examples) C:/slangweb-examples/slangweb_dash_example>slangweb download-models
+```
+
+9. Sync to create the language lookup files (as many as languages you have selected)
+
+```
+(slangweb-examples) C:/slangweb-examples/slangweb_dash_example>slangweb sync
+```
+
+10. Run the example
+
+```
+(slangweb-examples) C:/slangweb-examples/slangweb_dash_example>python app.py
+```
+
+11. Open example website
+
+Open [http://127.0.0.1:8050/en/home](http://127.0.0.1:8050/en/home) in your browser.
 
 ## Recommendations & caveats
 
